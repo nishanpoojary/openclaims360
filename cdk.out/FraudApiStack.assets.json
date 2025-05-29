@@ -1,0 +1,19 @@
+{
+  "version": "36.0.0",
+  "files": {
+    "7b6e31c1f38930b7023cc277e877dc746d9bd45a8ab5e6d40cf3abd2c04db127": {
+      "source": {
+        "path": "FraudApiStack.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "current_account-current_region": {
+          "bucketName": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}",
+          "objectKey": "7b6e31c1f38930b7023cc277e877dc746d9bd45a8ab5e6d40cf3abd2c04db127.json",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/cdk-hnb659fds-file-publishing-role-${AWS::AccountId}-${AWS::Region}"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}

@@ -1,0 +1,19 @@
+{
+  "version": "36.0.0",
+  "files": {
+    "d2a0ca214a92be45c7dfdd46d12b8d0a0af4a1b255bfc4941599e6cd6cb71b9c": {
+      "source": {
+        "path": "BudgetStack.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "current_account-current_region": {
+          "bucketName": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}",
+          "objectKey": "d2a0ca214a92be45c7dfdd46d12b8d0a0af4a1b255bfc4941599e6cd6cb71b9c.json",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/cdk-hnb659fds-file-publishing-role-${AWS::AccountId}-${AWS::Region}"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}

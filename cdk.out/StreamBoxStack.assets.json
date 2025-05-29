@@ -1,0 +1,19 @@
+{
+  "version": "36.0.0",
+  "files": {
+    "4b67681b98696d0cb0ba280fd7a211b48ecb015a7da5b8350fc49b52ab029420": {
+      "source": {
+        "path": "StreamBoxStack.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "current_account-current_region": {
+          "bucketName": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}",
+          "objectKey": "4b67681b98696d0cb0ba280fd7a211b48ecb015a7da5b8350fc49b52ab029420.json",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/cdk-hnb659fds-file-publishing-role-${AWS::AccountId}-${AWS::Region}"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}
