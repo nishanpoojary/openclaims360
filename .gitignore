@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+.env
+
+# Airflow specific logs and local DB (if any)
+/logs/
+*.db
+*.db-journal
+unittests.cfg
+airflow.cfg
+webserver_config.py
+
+# MLflow tracking data
+/mlruns/
+
+# Superset local data
+/superset_home/
+
+# Locally generated data files (important for keeping repo small)
+/data/raw/
+/data/processed_raw/
+/data/silver/
+/data/gold/
+# You might want to add an empty .gitkeep file in these folders
+# if you want the directory structure to be committed but not the files inside.
+
+# Locally saved models (the source of truth is the MLflow artifact store)
+/models/
+/models_task_output/
+
+# IDE and OS specific
+.vscode/
+.idea/
+*.DS_Store
+Thumbs.db

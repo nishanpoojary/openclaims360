@@ -1,0 +1,152 @@
+# openclaims_fresh_start/docker-compose.yml
+services:
+  redpanda:
+    image: redpandadata/redpanda:v24.1.5
+    command:
+      - redpanda
+      - start
+      - --smp 1
+      - --overprovisioned
+      - --kafka-addr PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
+      - --advertise-kafka-addr PLAINTEXT://redpanda:29092,OUTSIDE://localhost:9092
+    ports:
+      - "9092:9092" # For host access to Kafka
+      - "29092:29092" # For inter-container Kafka access
+    networks:
+      - app_network
+    restart: unless-stopped
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.12.2
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri /mlruns_store 
+      --default-artifact-root /mlruns_store/artifacts
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlruns:/mlruns_store # Mount host's mlruns to where server expects its filestore
+    restart: unless-stopped
+    networks:
+      - app_network
+
+  postgres:
+    image: postgres:13
+    environment:
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_DB=airflow
+    logging:
+      options: {max-size: 10m, max-file: "3"}
+    volumes:
+      - airflow_postgres_data:/var/lib/postgresql/data
+    networks:
+      - app_network
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  airflow-init:
+    build:
+      context: . # Project root where Dockerfile.airflow is
+      dockerfile: Dockerfile.airflow
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        set -e # Exit immediately if a command exits with a non-zero status.
+        # Function to check if db is ready
+        wait_for_postgres() {
+          echo "Waiting for PostgreSQL..."
+          until PGPASSWORD=airflow psql -h postgres -U airflow -d airflow -c '\q'; do
+            >&2 echo "Postgres is unavailable - sleeping"
+            sleep 1
+          done
+          >&2 echo "Postgres is up - continuing"
+        }
+        wait_for_postgres
+        echo "Initializing Airflow database..."
+        airflow db init
+        echo "Creating Airflow admin user (admin/admin)..."
+        airflow users create \
+          --username admin \
+          --firstname Admin \
+          --lastname User \
+          --role Admin \
+          --email admin@example.com \
+          --password admin || echo "Admin user already exists or failed to create (ignoring error for idempotency)"
+        echo "Airflow initialization complete."
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__LOAD_EXAMPLES=false
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+    networks:
+      - app_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  airflow-webserver:
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow
+    command: webserver
+    ports:
+      - "8080:8080" # Airflow UI
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs 
+      - ./plugins:/opt/airflow/plugins
+      - ./flows:/opt/airflow/project_flows
+      - ./data:/opt/airflow/project_data
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+      - AIRFLOW__WEBSERVER__EXPOSE_CONFIG=True
+      - PYTHONPATH=/opt/airflow/project_flows
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    networks:
+      - app_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  airflow-scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow
+    command: scheduler
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+      - ./flows:/opt/airflow/project_flows 
+      - ./data:/opt/airflow/project_data
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+      - PYTHONPATH=/opt/airflow/project_flows
+    depends_on:
+      airflow-webserver: # Wait for webserver to be healthy (implicitly means init done)
+        condition: service_healthy
+    networks:
+      - app_network
+    restart: unless-stopped
+
+networks:
+  app_network:
+    driver: bridge
+
+volumes:
+  airflow_postgres_data:

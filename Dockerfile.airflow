@@ -1,0 +1,24 @@
+# openclaims_fresh_start/Dockerfile.airflow
+# Use an official Apache Airflow base image
+FROM apache/airflow:2.8.1-python3.11
+
+# Set the ARG for DEBIAN_FRONTEND to avoid interactive prompts
+ARG DEBIAN_FRONTEND=noninteractive
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    # Add any other system-level dependencies if your Python packages need them
+    # e.g., for psycopg2 (if not using -binary), you might need libpq-dev
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+USER airflow
+
+# Copy your project's requirements file into the image.
+# This path is relative to the build context (your project root).
+COPY ./flows/requirements.txt /requirements.txt
+
+# Install Python dependencies for your flows AND Airflow itself (if any specific ones)
+# Using --user because the airflow user might not have write permissions to system site-packages
+RUN pip install --no-cache-dir --user -r /requirements.txt
+
+# Airflow needs to know where to find user-installed packages
+ENV PYTHONPATH=/home/airflow/.local/bin:/home/airflow/.local/lib/python3.11/site-packages:$PYTHONPATH
